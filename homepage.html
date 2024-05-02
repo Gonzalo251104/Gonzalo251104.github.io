@@ -1,22 +1,127 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Otra página</title>
-  <link rel="stylesheet" href="css/homepage.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATA CLARO</title>
+    <style>
+        /* Estilos para el cuerpo y el encabezado */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f8f8;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff0000;
+            /* Rojo */
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Estilos para el formulario y la tabla */
+        #excelFile {
+            display: block;
+            margin: 0 auto 20px;
+            padding: 10px;
+            border: 2px solid #ff0000;
+            /* Borde rojo */
+            border-radius: 5px;
+            background-color: #fff;
+            color: #ff0000;
+            /* Texto rojo */
+            font-size: 16px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin: 0 auto;
+            border: 2px solid #ff0000;
+            /* Borde rojo */
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
+
 <body>
+    <h1>DATA CLARO</h1>
+    <input type="text" id="codeInput" placeholder="Ingresa un código">
+    <button onclick="filterTable()">Filtrar</button>
+    <input type="file" id="excelFile" accept=".xls, .xlsx">
+    <div id="tableContainer"></div>
+    <script>
+        let sheetData; // Variable global para almacenar los datos del Excel
+        let selectedColumns = [4, 5, 7, 13, 16, 17, 19, 20, 24, 26, 27, 49]; // Variable global para las columnas seleccionadas
 
-<div class="container">
-  <h2>Estado del servicio</h2>
-  <p id="service-status">Cargando estado...</p>
-  
-  <h2>Datos del usuario</h2>
-  <p id="user-data">Cargando datos...</p>
-</div>
+        document.getElementById('excelFile').addEventListener('change', handleFileUpload);
 
-<script src="js/homepage.js"></script>
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+
+                // Convertir la hoja a JSON
+                sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // Crear una nueva tabla HTML
+                let tableHtml = '<table>';
+                for (let i = 0; i < sheetData.length; i++) {
+                    tableHtml += '<tr>';
+                    for (let j = 0; j < selectedColumns.length; j++) {
+                        tableHtml += `<td>${sheetData[i][selectedColumns[j]]}</td>`;
+                    }
+                    tableHtml += '</tr>';
+                }
+                tableHtml += '</table>';
+
+                document.getElementById('tableContainer').innerHTML = tableHtml;
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function filterTable() {
+            const inputCode = document.getElementById('codeInput').value;
+            const filteredData = sheetData.filter(row => row[7].toString() === inputCode); // Asegúrate de que este índice sea correcto
+
+            let tableHtml = '<table>';
+            if (filteredData.length > 0) { // Verificar si hay datos después del filtrado
+                for (let i = 0; i < filteredData.length; i++) {
+                    tableHtml += '<tr>';
+                    for (let j = 0; j < selectedColumns.length; j++) {
+                        tableHtml += `<td>${filteredData[i][selectedColumns[j]]}</td>`;
+                    }
+                    tableHtml += '</tr>';
+                }
+            } else {
+                tableHtml += '<tr><td colspan="' + selectedColumns.length + '">No se encontraron datos.</td></tr>'; // Mensaje si no hay datos
+            }
+            tableHtml += '</table>';
+            document.getElementById('tableContainer').innerHTML = tableHtml;
+        }
+    </script>
+
+    <!-- Asegúrate de incluir la biblioteca XLSX.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </body>
+
 </html>
