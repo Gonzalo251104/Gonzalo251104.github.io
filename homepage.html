@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DATA CLARO</title>
     <style>
+        /* Estilos para el cuerpo y el encabezado */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -20,6 +21,7 @@
             margin-bottom: 30px;
         }
 
+        /* Estilos para el formulario y la tabla */
         #excelFile {
             display: block;
             margin: 0 auto 20px;
@@ -56,10 +58,37 @@
     <button onclick="filterTable()">Filtrar</button>
     <input type="file" id="excelFile" accept=".xls, .xlsx">
     <div id="tableContainer"></div>
-    
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <!-- Firebase Storage -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js"></script>
+    <!-- XLSX library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
     <script>
-        let sheetData; 
-        let selectedColumns = [4, 5, 7, 13, 16, 17, 19, 20, 24, 26, 27, 49];
+        import { initializeApp } from "firebase/app";
+        import { getAnalytics } from "firebase/analytics";
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC256sP3B77qhuJIwE5AxDzbTTDjpJ2yjw",
+            authDomain: "data-claro.firebaseapp.com",
+            projectId: "data-claro",
+            storageBucket: "data-claro.appspot.com",
+            messagingSenderId: "140846331814",
+            appId: "1:140846331814:web:8569d383c00b0267ed4167",
+            measurementId: "G-YDKWW0KPF4"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+
+        const db = firebase.firestore();
+        let sheetData;
+        const selectedColumns = [4, 5, 7, 13, 16, 17, 19, 20, 24, 26, 27, 49];
 
         document.getElementById('excelFile').addEventListener('change', handleFileUpload);
 
@@ -78,12 +107,21 @@
                 const sheet = workbook.Sheets[sheetName];
 
                 sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-                localStorage.setItem('sheetData', JSON.stringify(sheetData));
-
-                renderTable(sheetData);
+                uploadSheetData(sheetData);
             };
             reader.readAsBinaryString(file);
+        }
+
+        async function uploadSheetData(data) {
+            try {
+                const sheetId = new Date().toISOString();
+                const sheetRef = db.collection('sheets').doc(sheetId);
+                await sheetRef.set({ data: data, created: firebase.firestore.FieldValue.serverTimestamp() });
+                localStorage.setItem('sheetId', sheetId);
+                renderTable(data);
+            } catch (error) {
+                console.error("Error uploading sheet data:", error);
+            }
         }
 
         function renderTable(data) {
@@ -101,7 +139,6 @@
                 tableHtml += '</tr>';
             }
             tableHtml += '</table>';
-
             document.getElementById('tableContainer').innerHTML = tableHtml;
         }
 
@@ -111,27 +148,36 @@
                 alert("No se ha cargado ningún archivo.");
                 return;
             }
-
             const filteredData = sheetData.filter(row => row[7] && row[7].toString() === inputCode);
-
             if (filteredData.length === 0) {
                 document.getElementById('tableContainer').innerHTML = '<p>No se encontraron datos.</p>';
                 return;
             }
-
             renderTable([sheetData[0], ...filteredData]);
         }
 
+        async function loadSheetData(sheetId) {
+            try {
+                const sheetRef = db.collection('sheets').doc(sheetId);
+                const doc = await sheetRef.get();
+                if (doc.exists) {
+                    sheetData = doc.data().data;
+                    renderTable(sheetData);
+                } else {
+                    console.log("No such document!");
+                }
+            } catch (error) {
+                console.error("Error loading sheet data:", error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            const storedData = localStorage.getItem('sheetData');
-            if (storedData) {
-                sheetData = JSON.parse(storedData);
-                renderTable(sheetData);
+            const storedSheetId = localStorage.getItem('sheetId');
+            if (storedSheetId) {
+                loadSheetData(storedSheetId);
             }
         });
     </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 </body>
 
 </html>
