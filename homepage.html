@@ -38,7 +38,8 @@
             border: 2px solid #ff0000;
         }
 
-        th, td {
+        th,
+        td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
@@ -56,9 +57,9 @@
     <button onclick="filterTable()">Filtrar</button>
     <input type="file" id="excelFile" accept=".xls, .xlsx">
     <div id="tableContainer"></div>
-    
+
     <script>
-        let sheetData; 
+        let sheetData;
         let selectedColumns = [4, 5, 7, 13, 16, 17, 19, 20, 24, 26, 27, 49];
 
         document.getElementById('excelFile').addEventListener('change', handleFileUpload);
@@ -70,20 +71,33 @@
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = e.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
+            const formData = new FormData();
+            formData.append('file', file);
 
-                sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            fetch('http://localhost:3000/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(result => {
+                alert(result);
+                fetchData();
+            })
+            .catch(error => {
+                console.error('Error uploading file:', error);
+            });
+        }
 
-                localStorage.setItem('sheetData', JSON.stringify(sheetData));
-
-                renderTable(sheetData);
-            };
-            reader.readAsBinaryString(file);
+        function fetchData() {
+            fetch('http://localhost:3000/data')
+                .then(response => response.json())
+                .then(data => {
+                    sheetData = data;
+                    renderTable(sheetData);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
         }
 
         function renderTable(data) {
@@ -123,11 +137,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const storedData = localStorage.getItem('sheetData');
-            if (storedData) {
-                sheetData = JSON.parse(storedData);
-                renderTable(sheetData);
-            }
+            fetchData();
         });
     </script>
 
